@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anonymous P2P Chat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-color-scheme="dark">
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>Anonymous P2P Chat</h1>
+            <div class="user-info">
+                <span class="user-id">ID: <span id="userId"></span></span>
+                <div class="nickname-input">
+                    <input type="text" id="nicknameInput" placeholder="Optional nickname" maxlength="20" class="form-control">
+                </div>
+            </div>
+        </header>
+
+        <!-- Connection Panel -->
+        <div class="connection-panel" id="connectionPanel">
+            <h2>Connect to Peers</h2>
+            
+            <!-- Create Session -->
+            <div class="connection-section">
+                <h3>Create Session</h3>
+                <button id="createOfferBtn" class="btn btn--primary">Generate Connection Code</button>
+                <div id="offerOutput" class="code-output">
+                    <label class="form-label">Share this code with others:</label>
+                    <textarea id="offerText" readonly class="form-control code-textarea"></textarea>
+                    <button id="copyOfferBtn" class="btn btn--secondary btn--sm">Copy</button>
+                </div>
+            </div>
+
+            <!-- Join Session -->
+            <div class="connection-section">
+                <h3>Join Session</h3>
+                <label class="form-label">Paste connection code here:</label>
+                <textarea id="offerInput" placeholder="Paste the connection code here..." class="form-control code-textarea"></textarea>
+                <button id="joinSessionBtn" class="btn btn--primary">Generate Response Code</button>
+                <div id="answerOutput" class="code-output">
+                    <label class="form-label">Send this code back:</label>
+                    <textarea id="answerText" readonly class="form-control code-textarea"></textarea>
+                    <button id="copyAnswerBtn" class="btn btn--secondary btn--sm">Copy</button>
+                </div>
+            </div>
+
+            <!-- Complete Connection -->
+            <div class="connection-section">
+                <h3>Complete Connection</h3>
+                <label class="form-label">Paste response code here:</label>
+                <textarea id="answerInput" placeholder="Paste the response code here..." class="form-control code-textarea"></textarea>
+                <button id="completeConnectionBtn" class="btn btn--primary">Connect</button>
+            </div>
+
+            <!-- Connection Status -->
+            <div class="connection-status">
+                <h4>Connected Peers: <span id="peerCount">0</span></h4>
+                <div id="peersList" class="peers-list"></div>
+            </div>
+        </div>
+
+        <!-- File Drop Zone (Always Visible) -->
+        <div class="file-section">
+            <h3>File Sharing</h3>
+            <div class="file-drop-zone" id="fileDropZone">
+                <div class="file-drop-text">Drop files here or click to select</div>
+                <input type="file" id="fileInput" multiple hidden>
+            </div>
+        </div>
+
+        <!-- Chat Interface -->
+        <div class="chat-container" id="chatContainer" style="display: none;">
+            <div class="chat-header">
+                <h2>Chat Room</h2>
+                <div class="chat-controls">
+                    <span class="connection-indicator">
+                        <span class="status-dot connected" id="connectionStatus"></span>
+                        <span id="connectionText">Connected</span>
+                    </span>
+                    <button id="showConnectionPanelBtn" class="btn btn--outline btn--sm">Add More Peers</button>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages"></div>
+
+            <div class="chat-input-area">
+                <div class="message-input-container">
+                    <textarea id="messageInput" placeholder="Type your message..." class="form-control message-input" rows="1"></textarea>
+                    <button id="sendMessageBtn" class="btn btn--primary send-btn">Send</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Transfer Progress -->
+        <div id="fileTransferProgress" class="file-transfer-progress" style="display: none;">
+            <div class="progress-header">
+                <span id="progressFileName"></span>
+                <button id="cancelTransferBtn" class="btn btn--outline btn--sm">Cancel</button>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="progress-text">
+                <span id="progressPercent">0%</span>
+                <span id="progressSize"></span>
+            </div>
+        </div>
+
+        <!-- Status Messages -->
+        <div id="statusMessages" class="status-messages"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
