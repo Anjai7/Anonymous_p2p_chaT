@@ -28,5 +28,6 @@ A fully anonymous, peer-to-peer chat and file-sharing web application—no serve
 
 4. **Ephemeral by Design**  
    Reloading or closing the browser erases everything—no traces left, ever.
+<img width="1759" height="1331" alt="image" src="https://github.com/user-attachments/assets/78ac6203-7356-4455-9e35-8c63f557b5b7" />
 
 
