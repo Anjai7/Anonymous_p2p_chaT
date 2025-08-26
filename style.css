@@ -819,6 +819,9 @@ body {
 }
 
 .connection-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
   margin-bottom: var(--space-24);
   padding-bottom: var(--space-20);
   border-bottom: 1px solid var(--color-border);
@@ -830,13 +833,13 @@ body {
 }
 
 .connection-section h3 {
-  margin-bottom: var(--space-16);
+  margin-bottom: 0;
   font-size: var(--font-size-lg);
   color: var(--color-text);
 }
 
 .code-output {
-  margin-top: var(--space-16);
+  margin-top: 0;
   padding: var(--space-16);
   background: var(--color-card-background, var(--color-background));
   border-radius: var(--radius-base);
@@ -1234,6 +1237,15 @@ body {
     right: var(--space-12);
     left: var(--space-12);
     width: auto;
+  }
+
+  .status-messages {
+    top: auto; /* Override desktop style */
+    z-index: 1001; /* Appear above file progress */
+  }
+
+  .code-textarea {
+    min-height: 80px;
   }
 }
 
