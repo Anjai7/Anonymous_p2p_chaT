@@ -6,6 +6,7 @@ class P2PChat {
         this.userId = this.generateUserId();
         this.nickname = '';
         this.fileTransfers = new Map(); // Track ongoing file transfers
+        this.pendingFileChunks = new Map(); // Track metadata for incoming file chunks
         
         // WebRTC Configuration
         this.rtcConfig = {
@@ -318,27 +319,32 @@ class P2PChat {
     }
 
     handleMessage(data, peerId) {
-        try {
-            const message = JSON.parse(data);
-            
-            switch (message.type) {
-                case 'text':
-                    this.displayMessage(message, false);
-                    break;
-                case 'file-offer':
-                    this.handleFileOffer(message, peerId);
-                    break;
-                case 'file-chunk':
-                    this.handleFileChunk(message, peerId);
-                    break;
-                case 'file-complete':
-                    this.handleFileComplete(message, peerId);
-                    break;
-                default:
-                    console.log('Unknown message type:', message.type);
+        if (typeof data === 'string') {
+            try {
+                const message = JSON.parse(data);
+
+                switch (message.type) {
+                    case 'text':
+                        this.displayMessage(message, false);
+                        break;
+                    case 'file-offer':
+                        this.handleFileOffer(message, peerId);
+                        break;
+                    case 'file-chunk-meta': // Changed from 'file-chunk'
+                        this.pendingFileChunks.set(peerId, message);
+                        break;
+                    case 'file-complete':
+                        this.handleFileComplete(message, peerId);
+                        break;
+                    default:
+                        console.log('Unknown message type:', message.type);
+                }
+            } catch (error) {
+                console.error('Error handling JSON message:', error);
             }
-        } catch (error) {
-            console.error('Error handling message:', error);
+        } else {
+            // Received binary data (file chunk)
+            this.handleFileChunk(data, peerId);
         }
     }
 
@@ -380,6 +386,18 @@ class P2PChat {
                     dataChannel.send(messageStr);
                 } catch (error) {
                     console.error(`Failed to send message to ${peerId}:`, error);
+                }
+            }
+        }
+    }
+
+    broadcastBinary(data) {
+        for (const [peerId, dataChannel] of this.dataChannels) {
+            if (dataChannel.readyState === 'open') {
+                try {
+                    dataChannel.send(data);
+                } catch (error) {
+                    console.error(`Failed to send binary data to ${peerId}:`, error);
                 }
             }
         }
@@ -462,14 +480,15 @@ class P2PChat {
                 const end = Math.min(start + this.CHUNK_SIZE, file.size);
                 const chunk = arrayBuffer.slice(start, end);
                 
-                const chunkMessage = {
-                    type: 'file-chunk',
+                const chunkMeta = {
+                    type: 'file-chunk-meta',
                     transferId: transferId,
-                    chunkIndex: chunkIndex,
-                    data: Array.from(new Uint8Array(chunk))
+                    chunkIndex: chunkIndex
                 };
 
-                this.broadcastMessage(chunkMessage);
+                // Send metadata first, then the raw chunk
+                this.broadcastMessage(chunkMeta);
+                this.broadcastBinary(chunk);
                 
                 // Update progress
                 const progress = ((chunkIndex + 1) / totalChunks) * 100;
@@ -514,16 +533,25 @@ class P2PChat {
         this.displayFileMessage(message);
     }
 
-    handleFileChunk(message, peerId) {
-        const transfer = this.fileTransfers.get(message.transferId);
+    handleFileChunk(chunkData, peerId) {
+        const meta = this.pendingFileChunks.get(peerId);
+        if (!meta) {
+            console.error('Received file chunk without metadata.');
+            return;
+        }
+
+        const transfer = this.fileTransfers.get(meta.transferId);
         if (!transfer) return;
 
-        transfer.chunks[message.chunkIndex] = new Uint8Array(message.data);
+        transfer.chunks[meta.chunkIndex] = new Uint8Array(chunkData);
         transfer.receivedChunks++;
+
+        // Clean up metadata for this peer
+        this.pendingFileChunks.delete(peerId);
 
         // Check if all chunks received
         if (transfer.receivedChunks === transfer.totalChunks) {
-            this.completeFileTransfer(message.transferId);
+            this.completeFileTransfer(meta.transferId);
         }
     }
 
