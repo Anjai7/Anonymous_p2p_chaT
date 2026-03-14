@@ -26,33 +26,23 @@
             <!-- Create Session -->
             <div class="connection-section">
                 <h3>Create Session</h3>
-                <button id="createOfferBtn" class="btn btn--primary">Generate Connection Code</button>
-                <div id="offerOutput" class="code-output">
-                    <label class="form-label">Share this code with others:</label>
-                    <textarea id="offerText" readonly class="form-control code-textarea"></textarea>
-                    <button id="copyOfferBtn" class="btn btn--secondary btn--sm">Copy</button>
+                <button id="createOfferBtn" class="btn btn--primary">Create Room</button>
+                <div id="offerOutput" class="code-output" style="display: none;">
+                    <label class="form-label">Share this Room Code with others:</label>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <input type="text" id="roomCodeDisplay" readonly class="form-control" style="font-size: 1.5rem; text-align: center; letter-spacing: 2px;">
+                        <button id="copyRoomCodeBtn" class="btn btn--secondary btn--sm">Copy</button>
+                    </div>
+                    <div id="pollingStatus" style="margin-top: 10px; font-size: 0.9em; color: var(--text-secondary);">Waiting for peer to join...</div>
                 </div>
             </div>
 
             <!-- Join Session -->
             <div class="connection-section">
                 <h3>Join Session</h3>
-                <label class="form-label">Paste connection code here:</label>
-                <textarea id="offerInput" placeholder="Paste the connection code here..." class="form-control code-textarea"></textarea>
-                <button id="joinSessionBtn" class="btn btn--primary">Generate Response Code</button>
-                <div id="answerOutput" class="code-output">
-                    <label class="form-label">Send this code back:</label>
-                    <textarea id="answerText" readonly class="form-control code-textarea"></textarea>
-                    <button id="copyAnswerBtn" class="btn btn--secondary btn--sm">Copy</button>
-                </div>
-            </div>
-
-            <!-- Complete Connection -->
-            <div class="connection-section">
-                <h3>Complete Connection</h3>
-                <label class="form-label">Paste response code here:</label>
-                <textarea id="answerInput" placeholder="Paste the response code here..." class="form-control code-textarea"></textarea>
-                <button id="completeConnectionBtn" class="btn btn--primary">Connect</button>
+                <label class="form-label">Enter Room Code here:</label>
+                <input type="text" id="roomCodeInput" placeholder="e.g. 12345" class="form-control" style="font-size: 1.5rem; text-align: center; letter-spacing: 2px; margin-bottom: 10px;">
+                <button id="joinSessionBtn" class="btn btn--primary">Join Room</button>
             </div>
 
             <!-- Connection Status -->

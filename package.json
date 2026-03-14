@@ -1,0 +1,12 @@
+{
+  "name": "anonymous-p2p-chat",
+  "version": "1.0.0",
+  "description": "Anonymous P2P Chat with Vercel WebRTC Signaling",
+  "main": "app.js",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@vercel/kv": "^3.0.0"
+  }
+}

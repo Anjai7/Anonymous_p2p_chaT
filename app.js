@@ -7,7 +7,7 @@ class P2PChat {
         this.nickname = '';
         this.fileTransfers = new Map(); // Track ongoing file transfers
         this.pendingFileChunks = new Map(); // Track metadata for incoming file chunks
-        
+
         // WebRTC Configuration
         this.rtcConfig = {
             iceServers: [
@@ -29,7 +29,7 @@ class P2PChat {
             return crypto.randomUUID().substring(0, 8);
         }
         // Fallback for browsers without crypto.randomUUID
-        return 'xxxxxxxx'.replace(/[x]/g, () => 
+        return 'xxxxxxxx'.replace(/[x]/g, () =>
             (Math.random() * 16 | 0).toString(16)
         );
     }
@@ -38,7 +38,7 @@ class P2PChat {
         this.setupUI();
         this.bindEvents();
         document.getElementById('userId').textContent = this.userId;
-        
+
         // Check WebRTC support
         if (!this.checkWebRTCSupport()) {
             this.showError('Your browser does not support WebRTC');
@@ -53,7 +53,7 @@ class P2PChat {
         // Initialize UI state
         this.updateConnectionStatus();
         this.updatePeersList();
-        
+
         // Initially hide code output sections
         document.getElementById('offerOutput').style.display = 'none';
         document.getElementById('answerOutput').style.display = 'none';
@@ -68,12 +68,10 @@ class P2PChat {
         // Connection buttons
         document.getElementById('createOfferBtn').addEventListener('click', () => this.createOffer());
         document.getElementById('joinSessionBtn').addEventListener('click', () => this.joinSession());
-        document.getElementById('completeConnectionBtn').addEventListener('click', () => this.completeConnection());
-        
+
         // Copy buttons
-        document.getElementById('copyOfferBtn').addEventListener('click', () => this.copyToClipboard('offerText'));
-        document.getElementById('copyAnswerBtn').addEventListener('click', () => this.copyToClipboard('answerText'));
-        
+        document.getElementById('copyRoomCodeBtn').addEventListener('click', () => this.copyToClipboard('roomCodeDisplay'));
+
         // Chat functionality
         document.getElementById('sendMessageBtn').addEventListener('click', () => this.sendMessage());
         document.getElementById('messageInput').addEventListener('keypress', (e) => {
@@ -88,7 +86,7 @@ class P2PChat {
             document.getElementById('fileInput').click();
         });
         document.getElementById('fileInput').addEventListener('change', (e) => this.handleFileSelect(e));
-        
+
         // Drag and drop
         const dropZone = document.getElementById('fileDropZone');
         dropZone.addEventListener('dragover', (e) => {
@@ -120,28 +118,28 @@ class P2PChat {
 
     async createOffer() {
         try {
-            this.showStatus('Creating connection code...', 'info');
-            
+            this.showStatus('Creating room...', 'info');
+
             const peerId = 'peer_' + Date.now();
             const peerConnection = new RTCPeerConnection(this.rtcConfig);
-            
+
             // Setup data channel
             const dataChannel = peerConnection.createDataChannel('chat', {
                 ordered: true
             });
             this.setupDataChannel(dataChannel, peerId);
-            
+
             // Setup peer connection
             this.setupPeerConnection(peerConnection, peerId);
             this.peers.set(peerId, peerConnection);
-            
+
             // Create offer
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
-            
+
             // Wait for ICE gathering to complete
             await this.waitForICEGathering(peerConnection);
-            
+
             // Display offer for sharing
             const offerData = {
                 type: 'offer',
@@ -149,108 +147,137 @@ class P2PChat {
                 userId: this.userId,
                 nickname: this.nickname || `User ${this.userId}`
             };
-            
-            document.getElementById('offerText').value = JSON.stringify(offerData, null, 2);
+
+            // Create room using Vercel API
+            const response = await fetch('/api/create-room', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(offerData)
+            });
+            const data = await response.json();
+
+            if (!response.ok) throw new Error(data.error);
+
+            document.getElementById('roomCodeDisplay').value = data.roomCode;
             document.getElementById('offerOutput').style.display = 'block';
-            
-            this.showStatus('Connection code generated successfully!', 'success');
-            
+            document.getElementById('pollingStatus').textContent = 'Waiting for peer to join...';
+
+            this.showStatus('Room created! Waiting for peer...', 'success');
+
+            // Start polling for answer
+            this.pollForAnswer(peerConnection, data.roomCode);
+
         } catch (error) {
             console.error('Error creating offer:', error);
-            this.showError('Failed to create connection offer: ' + error.message);
+            this.showError('Failed to create room: ' + error.message);
         }
+    }
+
+    async pollForAnswer(peerConnection, roomCode) {
+        let attempts = 0;
+        const maxAttempts = 150; // 5 minutes at 2 seconds interval
+
+        const pollingInterval = setInterval(async () => {
+            attempts++;
+            try {
+                const response = await fetch(`/api/poll-answer?roomCode=${roomCode}`);
+                if (!response.ok) return;
+
+                const data = await response.json();
+                if (data.hasAnswer) {
+                    clearInterval(pollingInterval);
+                    document.getElementById('pollingStatus').textContent = 'Peer joined! Connecting...';
+                    await peerConnection.setRemoteDescription(data.answer.sdp);
+                    this.showStatus('Connection established!', 'success');
+                }
+            } catch (error) {
+                console.error('Polling error:', error);
+            }
+
+            if (attempts >= maxAttempts) {
+                clearInterval(pollingInterval);
+                if (peerConnection.signalingState !== 'stable') {
+                    document.getElementById('pollingStatus').textContent = 'Room expired. Please create a new one.';
+                    this.showError('Room expired after 5 minutes.');
+                }
+            }
+        }, 2000);
     }
 
     async joinSession() {
         try {
-            const offerInput = document.getElementById('offerInput').value.trim();
-            if (!offerInput) {
-                this.showError('Please paste a connection code');
+            const roomCode = document.getElementById('roomCodeInput').value.trim();
+            if (!roomCode) {
+                this.showError('Please enter a room code');
                 return;
             }
 
-            this.showStatus('Processing connection code...', 'info');
+            this.showStatus('Joining room...', 'info');
 
-            const offerData = JSON.parse(offerInput);
+            // Fetch the room definition (offer) from API
+            const response = await fetch(`/api/join-room?roomCode=${roomCode}`);
+            const data = await response.json();
+
+            if (!response.ok) throw new Error(data.error);
+            const offerData = data;
+
             const peerId = 'peer_' + Date.now();
             const peerConnection = new RTCPeerConnection(this.rtcConfig);
-            
+
             // Setup peer connection
             this.setupPeerConnection(peerConnection, peerId);
             this.peers.set(peerId, peerConnection);
-            
+
             // Set remote description
-            await peerConnection.setRemoteDescription(offerData.sdp);
-            
+            await peerConnection.setRemoteDescription(offerData.offer.sdp);
+
             // Create answer
             const answer = await peerConnection.createAnswer();
             await peerConnection.setLocalDescription(answer);
-            
+
             // Wait for ICE gathering
             await this.waitForICEGathering(peerConnection);
-            
-            // Display answer for sharing
+
+            // Send answer to API
             const answerData = {
                 type: 'answer',
                 sdp: peerConnection.localDescription,
                 userId: this.userId,
                 nickname: this.nickname || `User ${this.userId}`
             };
-            
-            document.getElementById('answerText').value = JSON.stringify(answerData, null, 2);
-            document.getElementById('answerOutput').style.display = 'block';
-            
-            this.showStatus('Response code generated successfully!', 'success');
-            
+
+            const submitResponse = await fetch('/api/submit-answer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    roomCode,
+                    answer: answerData,
+                    nickname: answerData.nickname,
+                    userId: answerData.userId
+                })
+            });
+            const submitData = await submitResponse.json();
+
+            if (!submitResponse.ok) throw new Error(submitData.error);
+
+            this.showStatus('Joined room! Establishing connection...', 'success');
+
         } catch (error) {
             console.error('Error joining session:', error);
             this.showError('Failed to join session: ' + error.message);
         }
     }
 
-    async completeConnection() {
-        try {
-            const answerInput = document.getElementById('answerInput').value.trim();
-            if (!answerInput) {
-                this.showError('Please paste a response code');
-                return;
-            }
-
-            this.showStatus('Establishing connection...', 'info');
-
-            const answerData = JSON.parse(answerInput);
-            
-            // Find the peer connection that's waiting for this answer
-            let connected = false;
-            for (const [peerId, peerConnection] of this.peers) {
-                if (peerConnection.signalingState === 'have-local-offer') {
-                    await peerConnection.setRemoteDescription(answerData.sdp);
-                    this.showStatus('Connection established!', 'success');
-                    connected = true;
-                    break;
-                }
-            }
-            
-            if (!connected) {
-                this.showError('No pending connection found. Please create an offer first.');
-            }
-            
-        } catch (error) {
-            console.error('Error completing connection:', error);
-            this.showError('Failed to complete connection: ' + error.message);
-        }
-    }
-
     setupPeerConnection(peerConnection, peerId) {
         peerConnection.oniceconnectionstatechange = () => {
             console.log(`ICE connection state for ${peerId}:`, peerConnection.iceConnectionState);
-            
-            if (peerConnection.iceConnectionState === 'connected' || 
+
+            if (peerConnection.iceConnectionState === 'connected' ||
                 peerConnection.iceConnectionState === 'completed') {
                 this.addSystemMessage(`Connected to peer`);
                 this.showChatInterface();
-            } else if (peerConnection.iceConnectionState === 'disconnected' || 
-                       peerConnection.iceConnectionState === 'failed') {
+            } else if (peerConnection.iceConnectionState === 'disconnected' ||
+                peerConnection.iceConnectionState === 'failed') {
                 this.addSystemMessage(`Peer disconnected`);
                 this.removePeer(peerId);
             }
@@ -309,7 +336,7 @@ class P2PChat {
             };
 
             peerConnection.addEventListener('icegatheringstatechange', checkState);
-            
+
             // Timeout after 10 seconds
             setTimeout(() => {
                 peerConnection.removeEventListener('icegatheringstatechange', checkState);
@@ -351,9 +378,9 @@ class P2PChat {
     sendMessage() {
         const messageInput = document.getElementById('messageInput');
         const text = messageInput.value.trim();
-        
+
         if (!text) return;
-        
+
         if (this.dataChannels.size === 0) {
             this.showError('No peers connected');
             return;
@@ -369,10 +396,10 @@ class P2PChat {
 
         // Send to all connected peers
         this.broadcastMessage(message);
-        
+
         // Display in own chat
         this.displayMessage(message, true);
-        
+
         // Clear input
         messageInput.value = '';
         messageInput.style.height = 'auto';
@@ -409,7 +436,7 @@ class P2PChat {
         messageEl.className = `message ${isOwn ? 'own' : ''}`;
 
         const time = new Date(message.timestamp).toLocaleTimeString([], {
-            hour: '2-digit', 
+            hour: '2-digit',
             minute: '2-digit'
         });
 
@@ -436,12 +463,12 @@ class P2PChat {
                 this.showError(`File "${file.name}" is too large. Maximum size is 100MB.`);
                 continue;
             }
-            
+
             if (this.dataChannels.size === 0) {
                 this.showError('No peers connected for file sharing');
                 return;
             }
-            
+
             this.sendFile(file);
         }
 
@@ -452,7 +479,7 @@ class P2PChat {
     async sendFile(file) {
         const transferId = 'transfer_' + Date.now();
         const totalChunks = Math.ceil(file.size / this.CHUNK_SIZE);
-        
+
         // Send file offer to all peers
         const fileOffer = {
             type: 'file-offer',
@@ -474,12 +501,12 @@ class P2PChat {
         // Send file chunks
         try {
             const arrayBuffer = await file.arrayBuffer();
-            
+
             for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
                 const start = chunkIndex * this.CHUNK_SIZE;
                 const end = Math.min(start + this.CHUNK_SIZE, file.size);
                 const chunk = arrayBuffer.slice(start, end);
-                
+
                 const chunkMeta = {
                     type: 'file-chunk-meta',
                     transferId: transferId,
@@ -489,7 +516,7 @@ class P2PChat {
                 // Send metadata first, then the raw chunk
                 this.broadcastMessage(chunkMeta);
                 this.broadcastBinary(chunk);
-                
+
                 // Update progress
                 const progress = ((chunkIndex + 1) / totalChunks) * 100;
                 this.updateFileProgress(progress);
@@ -507,7 +534,7 @@ class P2PChat {
             };
 
             this.broadcastMessage(completeMessage);
-            
+
             // Hide progress after a delay
             setTimeout(() => this.hideFileProgress(), 1000);
 
@@ -577,10 +604,10 @@ class P2PChat {
         // Create download link
         const blob = new Blob([fileData], { type: transfer.fileType });
         const downloadUrl = URL.createObjectURL(blob);
-        
+
         // Update the file message with download link
         this.updateFileMessageWithDownload(transferId, downloadUrl, transfer.fileName);
-        
+
         // Clean up
         this.fileTransfers.delete(transferId);
     }
@@ -592,7 +619,7 @@ class P2PChat {
         messageEl.dataset.transferId = message.transferId;
 
         const time = new Date(message.timestamp).toLocaleTimeString([], {
-            hour: '2-digit', 
+            hour: '2-digit',
             minute: '2-digit'
         });
 
@@ -625,7 +652,7 @@ class P2PChat {
         if (messageEl) {
             const statusEl = messageEl.querySelector('.file-status');
             statusEl.innerHTML = `<button class="btn btn--primary file-download">Download</button>`;
-            
+
             // Add click handler for download
             const downloadBtn = statusEl.querySelector('.file-download');
             downloadBtn.addEventListener('click', () => {
@@ -674,7 +701,7 @@ class P2PChat {
         const connectedCount = this.dataChannels.size;
         const statusDot = document.getElementById('connectionStatus');
         const statusText = document.getElementById('connectionText');
-        
+
         if (connectedCount > 0) {
             statusDot.className = 'status-dot connected';
             statusText.textContent = 'Connected';
@@ -687,10 +714,10 @@ class P2PChat {
     updatePeersList() {
         const peerCount = document.getElementById('peerCount');
         const peersList = document.getElementById('peersList');
-        
+
         peerCount.textContent = this.dataChannels.size;
         peersList.innerHTML = '';
-        
+
         let peerIndex = 1;
         for (const [peerId, dataChannel] of this.dataChannels) {
             if (dataChannel.readyState === 'open') {
@@ -728,12 +755,12 @@ class P2PChat {
         const messageEl = document.createElement('div');
         messageEl.className = `status-message ${type}`;
         messageEl.textContent = message;
-        
+
         container.appendChild(messageEl);
-        
+
         // Trigger animation
         setTimeout(() => messageEl.classList.add('show'), 10);
-        
+
         // Remove after 3 seconds
         setTimeout(() => {
             messageEl.classList.remove('show');
