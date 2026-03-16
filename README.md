@@ -22,50 +22,31 @@ We modernized the initial approach (which required manual copy-pasting of huge S
 - **Backend Signaling:** Vercel Serverless Functions (Node.js)
 - **Database:** Redis (via `ioredis`) for ephemeral, temporary signal storage (auto-expiring room codes)
 
-## 🛠️ Local Development
+## 📁 Architecture Overview
 
-### Prerequisites
+The application is structured into two main parts:
 
-1. Node.js (v18+)
-2. A free [Redis Database](https://upstash.com/) or local Redis server
-3. Vercel CLI (`npm i -g vercel`)
+### 1. Frontend (`index.html`, `style.css`, `app.js`)
+- **UI:** A modern, responsive interface built with HTML5 and native CSS variables for easy theming.
+- **WebRTC Logic (`app.js`):** Manages the `RTCPeerConnection` lifecycle. It handles:
+  - Requesting microphone/camera access (if extended).
+  - Creating and handling WebRTC Offers, Answers, and ICE Candidates.
+  - Managing `RTCDataChannel` connections for text messages and file transfers.
+  - Dynamically creating new peer connections when multiple users join the same room.
 
-### Setup
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Anjai7/Anonymous_p2p_chaT.git
-   cd Anonymous_p2p_chaT
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Create a `.env.local` file in the root directory and add your Redis URL:
-   ```env
-   REDIS_URL="redis://default:YOUR_PASSWORD@your-redis-url.com:PORT"
-   ```
-
-4. Run the Vercel development server:
-   ```bash
-   vercel dev
-   ```
-
-5. Open `http://localhost:3000` in two separate browser windows to test the P2P connection!
-
-## 🌐 Deployment
-
-This project is optimized for [Vercel](https://vercel.com). Simply push the repository to GitHub, link it to a new Vercel project, and add your `REDIS_URL` environment variable in the Vercel dashboard.
-
-```bash
-# Deploy to production from CLI
-vercel --prod
-```
+### 2. Backend Signaling (`/api/`)
+The backend is completely stateless, running on Vercel Edge/Serverless functions. It acts as a temporary "mailbox" router for WebRTC signals.
+- `create-room.js`: Generates a unique 5-digit code and creates a Redis Set for the room.
+- `join-room.js`: Adds a new user to the room and broadcasts a generic `peer-joined` event to all existing members.
+- `send-signal.js`: Routes specific WebRTC payloads (Offers, Answers, ICE Candidates) to a target user's specific signaling queue.
+- `poll-signals.js`: A long-polling endpoint where the frontend continuously checks for new messages in its private queue.
 
 ## 🔒 Security & Privacy
 
 Since AnonChat uses WebRTC, the signaling server (Redis) only briefly holds the "Offer" and "Answer" SDP tokens (which expire in minutes). Once the connection is established, all traffic (messages & files) flows exclusively between the connected peers.
 
 *Note: As with all P2P applications, connecting implies exposing your IP address to the peer you are connecting with, which is a requirement of WebRTC.*
+
+## 📖 Deployment Instructions
+
+Please refer to the [DEPLOYMENT.md](DEPLOYMENT.md) file for comprehensive instructions on how to set up the Redis database, configure environment variables, run the project locally, and deploy it to Vercel production.
