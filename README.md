@@ -1,52 +1,86 @@
-# AnonChat - Serverless P2P Encrypted Chat
+# AnonChat
+
+## Project Description
+
+AnonChat is a frictionless, anonymous, peer-to-peer (P2P) chat and file-sharing application that runs entirely in the web browser. 
+
+**What problem it solves:** Traditional messaging applications route all conversations and files through centralized servers. This requires user accounts, stores sensitive metadata, and creates artificial bottlenecks (such as file size limits) when uploading and downloading data.
+
+**Why it is useful:** AnonChat leverages WebRTC to create a direct **Full Mesh Network** between users. Once connected via a simple 5-digit room code, all messages and file transfers flow directly from browser to browser. Nothing is ever stored on a central server, ensuring absolute privacy and allowing you to utilize your maximum internet bandwidth for transferring massive files. 
+
+## Features
+
+* **True Mesh P2P Architecture:** Connect multiple users in a single room where everyone maintains a direct, encrypted connection to everyone else.
+* **Serverless Signaling Router:** Uses lightweight Vercel Edge functions and a Redis database to automate the complex WebRTC connection handshake seamlessly.
+* **End-to-End Encrypted:** Because data flows over WebRTC DataChannels, everything is encrypted by default using DTLS and SRTP.
+* **Unlimited File Sharing:** Bypass server upload limits and transfer massive files directly to your peers.
+* **Premium Glassmorphic UI:** A modern, fully responsive dark-mode interface built with deep CSS variables and fluid animations.
+* **No Sign-ups Required:** 100% anonymous. Just enter a display name and start chatting instantly.
+
+## Demo / Screenshots
 
 ![AnonChat UI](https://via.placeholder.com/1000x500.png?text=AnonChat+Premium+Glassmorphic+UI)
+*(Note: Replace this placeholder with actual screenshots of your application)*
 
-AnonChat is a frictionless, anonymous, peer-to-peer chat application that runs directly in the browser. It features end-to-end encryption via WebRTC, allowing users to send messages and transfer large files directly to each other without passing through a central server.
+## Installation
 
-We modernized the initial approach (which required manual copy-pasting of huge SDP tokens) by integrating a lightweight **Vercel Serverless + Upstash Redis (ioredis)** signaling backend. This allows users to connect simply by sharing a 5-digit room code!
+To run AnonChat locally on your machine, you will need Node.js, the Vercel CLI, and a Redis database (such as a free [Upstash](https://upstash.com/) instance).
 
-## ✨ Features
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Anjai7/Anonymous_p2p_chaT.git
+   cd Anonymous_p2p_chaT
+   ```
 
-- **True Mesh Peer-to-Peer:** Messages and files are sent directly between browsers using WebRTC `RTCDataChannel`. Supports multi-user rooms via a **Full Mesh Architecture** (everyone connects directly to everyone else).
-- **Serverless Signal Router:** Uses Vercel API functions and a Redis backend to automate the complex WebRTC handshake using simple 5-digit room codes, routing offers and ICE candidates between multiple users.
-- **End-to-End Encrypted:** Because data flows over WebRTC, everything is encrypted by default using DTLS and SRTP. No servers ever see your messages or files.
-- **Unlimited File Sizes:** Transfer massive files at maximum bandwidth since it skips server upload/download bottlenecks.
-- **Glassmorphic UI:** A premium, fully responsive dark-mode interface designed with deep CSS variables, glowing accents, and intuitive animations.
-- **No Signups Required:** Entirely anonymous. Set an optional display name or just jump straight in.
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-## 🚀 Tech Stack
+3. **Configure Environment Variables:**
+   Create a `.env.local` file in the root directory and add your Redis Connection URL:
+   ```env
+   REDIS_URL="redis://default:YOUR_PASSWORD@your-redis-url.com:PORT"
+   ```
 
-- **Frontend:** Vanilla HTML, CSS, JavaScript (No frameworks)
-- **WebRTC:** Native browser APIs for `RTCPeerConnection`
-- **Backend Signaling:** Vercel Serverless Functions (Node.js)
-- **Database:** Redis (via `ioredis`) for ephemeral, temporary signal storage (auto-expiring room codes)
+4. **Start the local development server:**
+   ```bash
+   vercel dev
+   ```
 
-## 📁 Architecture Overview
+## Usage
 
-The application is structured into two main parts:
+1. Open `http://localhost:3000` in your web browser.
+2. Under the **Start a Room** section, click **Create Room**. A 5-digit room code will be generated.
+3. Share this 5-digit room code with your friends.
+4. Your friends can open the app, enter the code under the **Join a Room** section, and click **Join Room**.
+5. Once connected, the chat interface will appear, and you can instantly send P2P messages and drag-and-drop files.
 
-### 1. Frontend (`index.html`, `style.css`, `app.js`)
-- **UI:** A modern, responsive interface built with HTML5 and native CSS variables for easy theming.
-- **WebRTC Logic (`app.js`):** Manages the `RTCPeerConnection` lifecycle. It handles:
-  - Requesting microphone/camera access (if extended).
-  - Creating and handling WebRTC Offers, Answers, and ICE Candidates.
-  - Managing `RTCDataChannel` connections for text messages and file transfers.
-  - Dynamically creating new peer connections when multiple users join the same room.
+## Project Structure
 
-### 2. Backend Signaling (`/api/`)
-The backend is completely stateless, running on Vercel Edge/Serverless functions. It acts as a temporary "mailbox" router for WebRTC signals.
-- `create-room.js`: Generates a unique 5-digit code and creates a Redis Set for the room.
-- `join-room.js`: Adds a new user to the room and broadcasts a generic `peer-joined` event to all existing members.
-- `send-signal.js`: Routes specific WebRTC payloads (Offers, Answers, ICE Candidates) to a target user's specific signaling queue.
-- `poll-signals.js`: A long-polling endpoint where the frontend continuously checks for new messages in its private queue.
+* `/api/`: Contains the Vercel Serverless Functions (`create-room.js`, `join-room.js`, `send-signal.js`, `poll-signals.js`) that act as a stateless mailbox router for WebRTC connection data.
+* `app.js`: The core frontend client logic. It manages the dynamic generation of `RTCPeerConnection` objects for the mesh network, handles data channels, and controls the UI state.
+* `index.html`: The main semantic HTML structure of the application.
+* `style.css`: The styling rules, featuring responsive layouts and a comprehensive Glassmorphic design system.
+* `DEPLOYMENT.md`: Dedicated guide for deploying the application to production via Vercel.
 
-## 🔒 Security & Privacy
+## Technologies Used
 
-Since AnonChat uses WebRTC, the signaling server (Redis) only briefly holds the "Offer" and "Answer" SDP tokens (which expire in minutes). Once the connection is established, all traffic (messages & files) flows exclusively between the connected peers.
+* **Frontend:** HTML5, CSS3 (Vanilla), JavaScript (Vanilla ES6+)
+* **Networking:** WebRTC (`RTCPeerConnection`, `RTCDataChannel`)
+* **Backend API:** Vercel Serverless/Edge Functions (Node.js)
+* **Database:** Redis (via the `ioredis` package) for ephemeral signal queueing
 
-*Note: As with all P2P applications, connecting implies exposing your IP address to the peer you are connecting with, which is a requirement of WebRTC.*
+## Contributing
 
-## 📖 Deployment Instructions
+Contributions are always welcome! If you would like to improve AnonChat:
 
-Please refer to the [DEPLOYMENT.md](DEPLOYMENT.md) file for comprehensive instructions on how to set up the Redis database, configure environment variables, run the project locally, and deploy it to Vercel production.
+1. Fork the repository.
+2. Create a new feature branch (`git checkout -b feature/amazing-feature`).
+3. Commit your changes (`git commit -m 'Add some amazing feature'`).
+4. Push to the branch (`git push origin feature/amazing-feature`).
+5. Open a Pull Request for review.
+
+## Author
+
+Created by [Anjai7](https://github.com/Anjai7)
