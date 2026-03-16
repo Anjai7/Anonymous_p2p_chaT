@@ -56,7 +56,6 @@ class P2PChat {
 
         // Initially hide code output sections
         document.getElementById('offerOutput').style.display = 'none';
-        document.getElementById('answerOutput').style.display = 'none';
     }
 
     bindEvents() {
