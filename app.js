@@ -183,14 +183,20 @@ class P2PChat {
         const pollingInterval = setInterval(async () => {
             attempts++;
             try {
-                const response = await fetch(`/api/poll-answer?roomCode=${roomCode}`);
+                // Add cache-busting timestamp to prevent 304 responses
+                const response = await fetch(`/api/poll-answer?roomCode=${roomCode}&_t=${Date.now()}`, {
+                    cache: 'no-store'
+                });
                 if (!response.ok) return;
 
                 const data = await response.json();
                 if (data.hasAnswer) {
                     clearInterval(pollingInterval);
                     document.getElementById('pollingStatus').textContent = 'Peer joined! Connecting...';
-                    await peerConnection.setRemoteDescription(data.answer.sdp);
+
+                    // Create a proper RTCSessionDescription from the answer
+                    const answerSdp = new RTCSessionDescription(data.answer.sdp);
+                    await peerConnection.setRemoteDescription(answerSdp);
                     this.showStatus('Connection established!', 'success');
                 }
             } catch (error) {
@@ -232,7 +238,8 @@ class P2PChat {
             this.peers.set(peerId, peerConnection);
 
             // Set remote description
-            await peerConnection.setRemoteDescription(offerData.offer.sdp);
+            const offerSdp = new RTCSessionDescription(offerData.offer.sdp);
+            await peerConnection.setRemoteDescription(offerSdp);
 
             // Create answer
             const answer = await peerConnection.createAnswer();

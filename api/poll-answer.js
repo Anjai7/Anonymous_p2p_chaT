@@ -3,6 +3,11 @@ import { Redis } from 'ioredis';
 const redis = new Redis(process.env.REDIS_URL);
 
 export default async function handler(req, res) {
+    // Prevent caching — this endpoint must always return fresh data
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     if (req.method !== 'GET') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
