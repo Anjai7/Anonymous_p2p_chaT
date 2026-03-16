@@ -17,6 +17,46 @@ AnonChat is a frictionless, anonymous, peer-to-peer (P2P) chat and file-sharing 
 * **Premium Glassmorphic UI:** A modern, fully responsive dark-mode interface built with deep CSS variables and fluid animations.
 * **No Sign-ups Required:** 100% anonymous. Just enter a display name and start chatting instantly.
 
+## How it Works (Architecture)
+
+AnonChat uses Vercel Edge functions and Redis as a stateless signaling server to exchange initial connection data. Once peers are connected, all chat and file data routes directly between browsers locally.
+
+```mermaid
+sequenceDiagram
+    participant User A
+    participant Vercel + Redis (Signaling)
+    participant User B
+    participant User C
+
+    Note over User A: Creates Room
+    User A->>Vercel + Redis (Signaling): POST /api/create-room
+    Vercel + Redis (Signaling)-->>User A: Base Code (e.g. '12345')
+    
+    Note over User B: Joins Room
+    User B->>Vercel + Redis (Signaling): POST /api/join-room ('12345')
+    Vercel + Redis (Signaling)-->>User A: Signal: peer-joined
+    
+    Note over User A, User B: Auto WebRTC Handshake
+    User A->>Vercel + Redis (Signaling): POST /api/send-signal (Offer)
+    Vercel + Redis (Signaling)-->>User B: Signal: offer
+    User B->>Vercel + Redis (Signaling): POST /api/send-signal (Answer)
+    Vercel + Redis (Signaling)-->>User A: Signal: answer
+    
+    Note over User A, User B: 🔒 Direct P2P Connection Established
+
+    Note over User C: Joins Room
+    User C->>Vercel + Redis (Signaling): POST /api/join-room ('12345')
+    
+    Note over Vercel + Redis (Signaling): Broadcasts to all users
+    Vercel + Redis (Signaling)-->>User A: Signal: peer-joined
+    Vercel + Redis (Signaling)-->>User B: Signal: peer-joined
+    
+    Note over User A, User C: Exchange Offers/Answers via Signals
+    Note over User B, User C: Exchange Offers/Answers via Signals
+    
+    Note over User A, User C: 🌐 Full Mesh Network Created!
+```
+
 ## Demo / Screenshots
 
 ![AnonChat UI](https://via.placeholder.com/1000x500.png?text=AnonChat+Premium+Glassmorphic+UI)
