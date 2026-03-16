@@ -1,4 +1,6 @@
-import { kv } from '@vercel/kv';
+import { Redis } from 'ioredis';
+
+const redis = new Redis(process.env.REDIS_URL);
 
 export default async function handler(req, res) {
     if (req.method !== 'GET') {
@@ -12,7 +14,8 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Room code is required' });
         }
 
-        const roomData = await kv.get(`room:${roomCode}`);
+        const dataStr = await redis.get(`room:${roomCode}`);
+        const roomData = dataStr ? JSON.parse(dataStr) : null;
 
         if (!roomData) {
             return res.status(404).json({ error: 'Room not found or expired' });

@@ -1,4 +1,6 @@
-import { kv } from '@vercel/kv';
+import { Redis } from 'ioredis';
+
+const redis = new Redis(process.env.REDIS_URL);
 
 function generateRoomCode() {
     return Math.floor(10000 + Math.random() * 90000).toString(); // 5-digit code
@@ -22,7 +24,7 @@ export default async function handler(req, res) {
         // Generate a unique room code
         while (!isUnique) {
             roomCode = generateRoomCode();
-            const exists = await kv.exists(`room:${roomCode}`);
+            const exists = await redis.exists(`room:${roomCode}`);
             if (!exists) {
                 isUnique = true;
             }
@@ -37,7 +39,7 @@ export default async function handler(req, res) {
         };
 
         // Store room data with an expiration of 15 minutes
-        await kv.set(`room:${roomCode}`, roomData, { ex: 900 });
+        await redis.set(`room:${roomCode}`, JSON.stringify(roomData), 'EX', 900);
 
         return res.status(200).json({ roomCode, message: 'Room created successfully' });
     } catch (error) {
