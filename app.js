@@ -70,8 +70,8 @@ class P2PChat {
         });
 
         // Connection buttons
-        document.getElementById('createOfferBtn').addEventListener('click', () => this.createOffer());
-        document.getElementById('joinSessionBtn').addEventListener('click', () => this.joinSession());
+        document.getElementById('createOfferBtn').addEventListener('click', () => this.createRoom());
+        document.getElementById('joinSessionBtn').addEventListener('click', () => this.joinRoom());
 
         // Copy buttons
         document.getElementById('copyRoomCodeBtn').addEventListener('click', () => this.copyToClipboard('roomCodeDisplay'));
@@ -120,105 +120,38 @@ class P2PChat {
         });
     }
 
-    async createOffer() {
+    async createRoom() {
         try {
             this.showStatus('Creating room...', 'info');
 
-            const peerId = 'peer_' + Date.now();
-            const peerConnection = new RTCPeerConnection(this.rtcConfig);
-
-            // Setup data channel
-            const dataChannel = peerConnection.createDataChannel('chat', {
-                ordered: true
-            });
-            this.setupDataChannel(dataChannel, peerId);
-
-            // Setup peer connection
-            this.setupPeerConnection(peerConnection, peerId);
-            this.peers.set(peerId, peerConnection);
-
-            // Create offer
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-
-            // Wait for ICE gathering to complete
-            await this.waitForICEGathering(peerConnection);
-
-            // Display offer for sharing
-            const offerData = {
-                type: 'offer',
-                sdp: peerConnection.localDescription,
-                userId: this.userId,
-                nickname: this.nickname || `User ${this.userId}`
-            };
-
-            // Create room using Vercel API
             const response = await fetch('/api/create-room', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    offer: offerData,
-                    nickname: offerData.nickname,
-                    userId: offerData.userId
+                    userId: this.userId,
+                    nickname: this.nickname
                 })
             });
             const data = await response.json();
 
             if (!response.ok) throw new Error(data.error);
 
-            document.getElementById('roomCodeDisplay').value = data.roomCode;
+            this.roomCode = data.roomCode;
+            document.getElementById('roomCodeDisplay').value = this.roomCode;
             document.getElementById('offerOutput').style.display = 'block';
-            document.getElementById('pollingStatus').textContent = 'Waiting for peer to join...';
+            document.getElementById('pollingStatus').textContent = 'Waiting for peers to join...';
 
-            this.showStatus('Room created! Waiting for peer...', 'success');
+            this.showStatus('Room created! Waiting for peers...', 'success');
 
-            // Start polling for answer
-            this.pollForAnswer(peerConnection, data.roomCode);
+            this.startPolling();
 
         } catch (error) {
-            console.error('Error creating offer:', error);
+            console.error('Error creating room:', error);
             this.showError('Failed to create room: ' + error.message);
         }
     }
 
-    async pollForAnswer(peerConnection, roomCode) {
-        let attempts = 0;
-        const maxAttempts = 150; // 5 minutes at 2 seconds interval
-
-        const pollingInterval = setInterval(async () => {
-            attempts++;
-            try {
-                // Add cache-busting timestamp to prevent 304 responses
-                const response = await fetch(`/api/poll-answer?roomCode=${roomCode}&_t=${Date.now()}`, {
-                    cache: 'no-store'
-                });
-                if (!response.ok) return;
-
-                const data = await response.json();
-                if (data.hasAnswer) {
-                    clearInterval(pollingInterval);
-                    document.getElementById('pollingStatus').textContent = 'Peer joined! Connecting...';
-
-                    // Create a proper RTCSessionDescription from the answer
-                    const answerSdp = new RTCSessionDescription(data.answer.sdp);
-                    await peerConnection.setRemoteDescription(answerSdp);
-                    this.showStatus('Connection established!', 'success');
-                }
-            } catch (error) {
-                console.error('Polling error:', error);
-            }
-
-            if (attempts >= maxAttempts) {
-                clearInterval(pollingInterval);
-                if (peerConnection.signalingState !== 'stable') {
-                    document.getElementById('pollingStatus').textContent = 'Room expired. Please create a new one.';
-                    this.showError('Room expired after 5 minutes.');
-                }
-            }
-        }, 2000);
-    }
-
-    async joinSession() {
+    async joinRoom() {
         try {
             const roomCode = document.getElementById('roomCodeInput').value.trim();
             if (!roomCode) {
@@ -228,58 +161,134 @@ class P2PChat {
 
             this.showStatus('Joining room...', 'info');
 
-            // Fetch the room definition (offer) from API
-            const response = await fetch(`/api/join-room?roomCode=${roomCode}`);
-            const data = await response.json();
-
-            if (!response.ok) throw new Error(data.error);
-            const offerData = data;
-
-            const peerId = 'peer_' + Date.now();
-            const peerConnection = new RTCPeerConnection(this.rtcConfig);
-
-            // Setup peer connection
-            this.setupPeerConnection(peerConnection, peerId);
-            this.peers.set(peerId, peerConnection);
-
-            // Set remote description
-            const offerSdp = new RTCSessionDescription(offerData.offer.sdp);
-            await peerConnection.setRemoteDescription(offerSdp);
-
-            // Create answer
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-
-            // Wait for ICE gathering
-            await this.waitForICEGathering(peerConnection);
-
-            // Send answer to API
-            const answerData = {
-                type: 'answer',
-                sdp: peerConnection.localDescription,
-                userId: this.userId,
-                nickname: this.nickname || `User ${this.userId}`
-            };
-
-            const submitResponse = await fetch('/api/submit-answer', {
+            const response = await fetch('/api/join-room', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     roomCode,
-                    answer: answerData,
-                    nickname: answerData.nickname,
-                    userId: answerData.userId
+                    userId: this.userId,
+                    nickname: this.nickname
                 })
             });
-            const submitData = await submitResponse.json();
+            const data = await response.json();
 
-            if (!submitResponse.ok) throw new Error(submitData.error);
+            if (!response.ok) throw new Error(data.error);
 
-            this.showStatus('Joined room! Establishing connection...', 'success');
+            this.roomCode = roomCode;
+            this.showStatus('Joined room! Connecting to existing peers...', 'success');
+
+            this.startPolling();
 
         } catch (error) {
             console.error('Error joining session:', error);
             this.showError('Failed to join session: ' + error.message);
+        }
+    }
+
+    startPolling() {
+        if (this.pollingInterval) clearInterval(this.pollingInterval);
+
+        this.pollingInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`/api/poll-signals?roomCode=${this.roomCode}&userId=${this.userId}&_t=${Date.now()}`, {
+                    cache: 'no-store'
+                });
+                if (!response.ok) return;
+
+                const data = await response.json();
+                if (data.signals && data.signals.length > 0) {
+                    for (const msg of data.signals) {
+                        this.handleSignal(msg);
+                    }
+                }
+            } catch (error) {
+                console.error('Polling error:', error);
+            }
+        }, 2000);
+    }
+
+    async handleSignal(msg) {
+        const peerId = msg.from;
+
+        if (msg.type === 'peer-joined') {
+            this.addSystemMessage(`${msg.nickname || 'Someone'} joined the room`);
+            await this.initiateConnection(peerId);
+        } else if (msg.type === 'signal') {
+            const signal = msg.signal;
+            if (signal.type === 'offer') {
+                await this.handleOffer(peerId, signal);
+            } else if (signal.type === 'answer') {
+                await this.handleAnswer(peerId, signal);
+            } else if (signal.candidate) {
+                await this.handleIceCandidate(peerId, signal);
+            }
+        }
+    }
+
+    async initiateConnection(targetId) {
+        const peerConnection = this.getOrCreatePeerConnection(targetId);
+
+        const dataChannel = peerConnection.createDataChannel('chat', { ordered: true });
+        this.setupDataChannel(dataChannel, targetId);
+
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        await this.sendSignal(targetId, peerConnection.localDescription);
+    }
+
+    async handleOffer(fromId, offerData) {
+        const peerConnection = this.getOrCreatePeerConnection(fromId);
+
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(offerData));
+
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        await this.sendSignal(fromId, peerConnection.localDescription);
+    }
+
+    async handleAnswer(fromId, answerData) {
+        const peerConnection = this.peers.get(fromId);
+        if (peerConnection) {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(answerData));
+        }
+    }
+
+    async handleIceCandidate(fromId, candidateData) {
+        const peerConnection = this.peers.get(fromId);
+        if (peerConnection) {
+            try {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(candidateData));
+            } catch (e) {
+                console.error('Error adding received ice candidate', e);
+            }
+        }
+    }
+
+    getOrCreatePeerConnection(peerId) {
+        if (this.peers.has(peerId)) {
+            return this.peers.get(peerId);
+        }
+
+        const peerConnection = new RTCPeerConnection(this.rtcConfig);
+        this.setupPeerConnection(peerConnection, peerId);
+        this.peers.set(peerId, peerConnection);
+        return peerConnection;
+    }
+
+    async sendSignal(targetUserId, signal) {
+        try {
+            await fetch('/api/send-signal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    roomCode: this.roomCode,
+                    targetUserId,
+                    fromUserId: this.userId,
+                    signal
+                })
+            });
+        } catch (err) {
+            console.error('Failed to send signal:', err);
         }
     }
 
@@ -304,9 +313,9 @@ class P2PChat {
         };
 
         peerConnection.onicecandidate = (event) => {
-            // ICE candidates are included in the SDP when gathering is complete
             if (event.candidate) {
-                console.log('ICE candidate:', event.candidate);
+                // Send trickle ICE candidates individually over the signal router
+                this.sendSignal(peerId, event.candidate);
             }
         };
     }

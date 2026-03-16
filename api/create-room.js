@@ -1,9 +1,10 @@
 import { Redis } from 'ioredis';
 
 const redis = new Redis(process.env.REDIS_URL);
+const ROOM_EXPIRE = 3600; // 1 hour
 
 function generateRoomCode() {
-    return Math.floor(10000 + Math.random() * 90000).toString(); // 5-digit code
+    return Math.floor(10000 + Math.random() * 90000).toString();
 }
 
 export default async function handler(req, res) {
@@ -12,10 +13,10 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { offer, nickname, userId } = req.body;
+        const { userId, nickname } = req.body;
 
-        if (!offer) {
-            return res.status(400).json({ error: 'Offer is required' });
+        if (!userId) {
+            return res.status(400).json({ error: 'User ID is required' });
         }
 
         let roomCode;
@@ -24,22 +25,19 @@ export default async function handler(req, res) {
         // Generate a unique room code
         while (!isUnique) {
             roomCode = generateRoomCode();
-            const exists = await redis.exists(`room:${roomCode}`);
+            const exists = await redis.exists(`room:${roomCode}:members`);
             if (!exists) {
                 isUnique = true;
             }
         }
 
-        const roomData = {
-            offer,
-            nickname,
-            userId,
-            answer: null,
-            createdAt: Date.now()
-        };
+        // Add the host to the room members set
+        await redis.sadd(`room:${roomCode}:members`, userId);
+        await redis.expire(`room:${roomCode}:members`, ROOM_EXPIRE);
 
-        // Store room data with an expiration of 15 minutes
-        await redis.set(`room:${roomCode}`, JSON.stringify(roomData), 'EX', 900);
+        // Also store user info so others can know the nickname
+        await redis.hset(`room:${roomCode}:info:${userId}`, 'nickname', nickname || 'Anonymous');
+        await redis.expire(`room:${roomCode}:info:${userId}`, ROOM_EXPIRE);
 
         return res.status(200).json({ roomCode, message: 'Room created successfully' });
     } catch (error) {

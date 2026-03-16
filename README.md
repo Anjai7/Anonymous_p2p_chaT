@@ -8,8 +8,8 @@ We modernized the initial approach (which required manual copy-pasting of huge S
 
 ## ✨ Features
 
-- **True Peer-to-Peer:** Messages and files are sent directly between browsers using WebRTC `RTCDataChannel`.
-- **Serverless Signaling:** Uses Vercel API functions and a Redis backend to automate the complex WebRTC handshake using simple 5-digit room codes.
+- **True Mesh Peer-to-Peer:** Messages and files are sent directly between browsers using WebRTC `RTCDataChannel`. Supports multi-user rooms via a **Full Mesh Architecture** (everyone connects directly to everyone else).
+- **Serverless Signal Router:** Uses Vercel API functions and a Redis backend to automate the complex WebRTC handshake using simple 5-digit room codes, routing offers and ICE candidates between multiple users.
 - **End-to-End Encrypted:** Because data flows over WebRTC, everything is encrypted by default using DTLS and SRTP. No servers ever see your messages or files.
 - **Unlimited File Sizes:** Transfer massive files at maximum bandwidth since it skips server upload/download bottlenecks.
 - **Glassmorphic UI:** A premium, fully responsive dark-mode interface designed with deep CSS variables, glowing accents, and intuitive animations.
