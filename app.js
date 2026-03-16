@@ -151,7 +151,11 @@ class P2PChat {
             const response = await fetch('/api/create-room', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(offerData)
+                body: JSON.stringify({
+                    offer: offerData,
+                    nickname: offerData.nickname,
+                    userId: offerData.userId
+                })
             });
             const data = await response.json();
 
