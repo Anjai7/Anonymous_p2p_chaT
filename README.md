@@ -1,33 +1,71 @@
-# Anonymous Serverless P2P Web Chat
+# AnonChat - Serverless P2P Encrypted Chat
 
-A fully anonymous, peer-to-peer chat and file-sharing web application—no servers, no persistence, no tracking, and nothing left behind after a page reload. Connect and communicate in real time with total privacy, directly in your browser!
+![AnonChat UI](https://via.placeholder.com/1000x500.png?text=AnonChat+Premium+Glassmorphic+UI)
 
-## 🚀 Features
+AnonChat is a frictionless, anonymous, peer-to-peer chat application that runs directly in the browser. It features end-to-end encryption via WebRTC, allowing users to send messages and transfer large files directly to each other without passing through a central server.
 
-- **True Anonymity:** No user registration, no tracking, no analytics, and no cookies.
-- **Peer-to-Peer Communication:** Uses WebRTC for direct browser-to-browser chat and file transfers.
-- **Absolutely No Data Persistence:** All messages and files exist only in memory and are wiped instantly if the page closes or reloads.
-- **Manual Signaling:** No server needed—simply exchange connection codes (offer/answer) to connect peers.
-- **Live Messaging:** Real-time text chat, supporting optional nicknames (never tied to identity).
-- **Anonymous File Sharing:** Peer-to-peer file transfers (up to 100MB per file) with progress tracking—files are never uploaded or stored.
-- **Modern Dark UI:** Responsive and visually appealing interface, fast and optimized for modern browsers.
-- **Public & Private:** Anyone can use it, and anyone can host it as static files on Netlify, Vercel, GitHub Pages, or any static host.
+We modernized the initial approach (which required manual copy-pasting of huge SDP tokens) by integrating a lightweight **Vercel Serverless + Upstash Redis (ioredis)** signaling backend. This allows users to connect simply by sharing a 5-digit room code!
 
-## 🛠️ How It Works
+## ✨ Features
 
-1. **Open the App**  
-   Each user receives a random session UID and may (optionally) pick a nickname.
+- **True Peer-to-Peer:** Messages and files are sent directly between browsers using WebRTC `RTCDataChannel`.
+- **Serverless Signaling:** Uses Vercel API functions and a Redis backend to automate the complex WebRTC handshake using simple 5-digit room codes.
+- **End-to-End Encrypted:** Because data flows over WebRTC, everything is encrypted by default using DTLS and SRTP. No servers ever see your messages or files.
+- **Unlimited File Sizes:** Transfer massive files at maximum bandwidth since it skips server upload/download bottlenecks.
+- **Glassmorphic UI:** A premium, fully responsive dark-mode interface designed with deep CSS variables, glowing accents, and intuitive animations.
+- **No Signups Required:** Entirely anonymous. Set an optional display name or just jump straight in.
 
-2. **Create or Join a Room**  
-   - One user creates a session, generates a connection code (offer), and shares it securely.
-   - Others join by pasting the offer code, generate an answer, and send it back.
-   - Multiple users can connect via manual exchange of codes for a mesh chat.
+## 🚀 Tech Stack
 
-3. **Chat & File Sharing**  
-   All messages and file transfers are fully peer-to-peer via encrypted WebRTC DataChannels.
+- **Frontend:** Vanilla HTML, CSS, JavaScript (No frameworks)
+- **WebRTC:** Native browser APIs for `RTCPeerConnection`
+- **Backend Signaling:** Vercel Serverless Functions (Node.js)
+- **Database:** Redis (via `ioredis`) for ephemeral, temporary signal storage (auto-expiring room codes)
 
-4. **Ephemeral by Design**  
-   Reloading or closing the browser erases everything—no traces left, ever.
-<img width="1759" height="1331" alt="image" src="https://github.com/user-attachments/assets/78ac6203-7356-4455-9e35-8c63f557b5b7" />
+## 🛠️ Local Development
 
+### Prerequisites
 
+1. Node.js (v18+)
+2. A free [Redis Database](https://upstash.com/) or local Redis server
+3. Vercel CLI (`npm i -g vercel`)
+
+### Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Anjai7/Anonymous_p2p_chaT.git
+   cd Anonymous_p2p_chaT
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Create a `.env.local` file in the root directory and add your Redis URL:
+   ```env
+   REDIS_URL="redis://default:YOUR_PASSWORD@your-redis-url.com:PORT"
+   ```
+
+4. Run the Vercel development server:
+   ```bash
+   vercel dev
+   ```
+
+5. Open `http://localhost:3000` in two separate browser windows to test the P2P connection!
+
+## 🌐 Deployment
+
+This project is optimized for [Vercel](https://vercel.com). Simply push the repository to GitHub, link it to a new Vercel project, and add your `REDIS_URL` environment variable in the Vercel dashboard.
+
+```bash
+# Deploy to production from CLI
+vercel --prod
+```
+
+## 🔒 Security & Privacy
+
+Since AnonChat uses WebRTC, the signaling server (Redis) only briefly holds the "Offer" and "Answer" SDP tokens (which expire in minutes). Once the connection is established, all traffic (messages & files) flows exclusively between the connected peers.
+
+*Note: As with all P2P applications, connecting implies exposing your IP address to the peer you are connecting with, which is a requirement of WebRTC.*

@@ -56,6 +56,11 @@ class P2PChat {
 
         // Initially hide code output sections
         document.getElementById('offerOutput').style.display = 'none';
+
+        // Setup mobile sidebar toggler
+        document.getElementById('showConnectionPanelBtn').addEventListener('click', () => {
+            document.body.classList.remove('chat-active');
+        });
     }
 
     bindEvents() {
@@ -703,21 +708,24 @@ class P2PChat {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
-    showChatInterface() {
-        document.getElementById('chatContainer').style.display = 'flex';
-    }
-
     updateConnectionStatus() {
-        const connectedCount = this.dataChannels.size;
+        const connectedCount = this.peers.size;
         const statusDot = document.getElementById('connectionStatus');
         const statusText = document.getElementById('connectionText');
 
+        document.getElementById('peerCount').textContent = connectedCount;
+
         if (connectedCount > 0) {
-            statusDot.className = 'status-dot connected';
-            statusText.textContent = 'Connected';
+            statusDot.classList.add('connected');
+            statusText.textContent = `${connectedCount} Peer(s) Connected`;
+            document.getElementById('chatContainer').style.display = 'flex';
+            // For mobile view: hide sidebar, show chat automatically when a peer joins
+            document.body.classList.add('chat-active');
         } else {
-            statusDot.className = 'status-dot';
-            statusText.textContent = 'Disconnected';
+            statusDot.classList.remove('connected');
+            statusText.textContent = 'Waiting for peers...';
+            document.getElementById('chatContainer').style.display = 'none';
+            document.body.classList.remove('chat-active');
         }
     }
 

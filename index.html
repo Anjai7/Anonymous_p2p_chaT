@@ -1,108 +1,230 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Anonymous P2P Chat</title>
+    <!-- Modern Font: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body data-color-scheme="dark">
+    <!-- Animated Background -->
+    <div class="bg-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+    </div>
+
     <div class="app-container">
         <!-- Header -->
-        <header class="app-header">
-            <h1>Anonymous P2P Chat</h1>
+        <header class="app-header glass-panel">
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#gradient)" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <defs>
+                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#06b6d4" />
+                            <stop offset="100%" stop-color="#3b82f6" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <h1>AnonChat</h1>
+            </div>
             <div class="user-info">
-                <span class="user-id">ID: <span id="userId"></span></span>
-                <div class="nickname-input">
-                    <input type="text" id="nicknameInput" placeholder="Optional nickname" maxlength="20" class="form-control">
+                <div class="badge-subtle">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span id="userId" class="mono-text"></span>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="nicknameInput" placeholder="Set display name..." maxlength="20"
+                        class="input-glass">
                 </div>
             </div>
         </header>
 
-        <!-- Connection Panel -->
-        <div class="connection-panel" id="connectionPanel">
-            <h2>Connect to Peers</h2>
-            
-            <!-- Create Session -->
-            <div class="connection-section">
-                <h3>Create Session</h3>
-                <button id="createOfferBtn" class="btn btn--primary">Create Room</button>
-                <div id="offerOutput" class="code-output" style="display: none;">
-                    <label class="form-label">Share this Room Code with others:</label>
-                    <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <input type="text" id="roomCodeDisplay" readonly class="form-control" style="font-size: 1.5rem; text-align: center; letter-spacing: 2px;">
-                        <button id="copyRoomCodeBtn" class="btn btn--secondary btn--sm">Copy</button>
+        <main class="main-layout">
+            <!-- Sidebar / Settings area -->
+            <aside class="sidebar">
+                <!-- Connection Panel -->
+                <div class="glass-panel" id="connectionPanel">
+                    <div class="panel-header">
+                        <h2>Signals & Peers</h2>
+                        <div class="status-indicator">
+                            <span class="pulse-dot"></span>
+                            <span class="status-text">Online</span>
+                        </div>
                     </div>
-                    <div id="pollingStatus" style="margin-top: 10px; font-size: 0.9em; color: var(--text-secondary);">Waiting for peer to join...</div>
+
+                    <div class="connection-methods">
+                        <!-- Create Session -->
+                        <div class="method-card">
+                            <h3>Start a Room</h3>
+                            <p class="subtitle">Generate a secure room code to invite others.</p>
+                            <button id="createOfferBtn" class="btn btn-primary w-full">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                Create Room
+                            </button>
+
+                            <div id="offerOutput" class="code-display-area" style="display: none;">
+                                <label>Share this code:</label>
+                                <div class="code-group">
+                                    <input type="text" id="roomCodeDisplay" readonly class="input-huge">
+                                    <button id="copyRoomCodeBtn" class="btn btn-icon" title="Copy Code">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div id="pollingStatus" class="polling-status">Waiting for peer to join...</div>
+                            </div>
+                        </div>
+
+                        <div class="divider"><span>OR</span></div>
+
+                        <!-- Join Session -->
+                        <div class="method-card">
+                            <h3>Join a Room</h3>
+                            <p class="subtitle">Enter a 5-digit code to connect.</p>
+                            <div class="join-group">
+                                <input type="text" id="roomCodeInput" placeholder="12345" class="input-huge"
+                                    maxlength="5">
+                                <button id="joinSessionBtn" class="btn btn-secondary w-full">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                                        <polyline points="10 17 15 12 10 7"></polyline>
+                                        <line x1="15" y1="12" x2="3" y2="12"></line>
+                                    </svg>
+                                    Join Room
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Connection Status -->
+                    <div class="active-peers">
+                        <div class="peer-header">
+                            <h4>Connected Peers</h4>
+                            <span class="badge" id="peerCount">0</span>
+                        </div>
+                        <div id="peersList" class="peers-list"></div>
+                    </div>
+                </div>
+
+                <!-- File Drop Zone -->
+                <div class="glass-panel file-section">
+                    <div class="panel-header">
+                        <h2>File Sharing</h2>
+                    </div>
+                    <div class="file-drop-zone" id="fileDropZone">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" class="drop-icon">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <div class="drop-text">Drag files here</div>
+                        <div class="drop-subtext">or click to browse</div>
+                        <input type="file" id="fileInput" multiple hidden>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Chat Area -->
+            <section class="chat-area glass-panel flex-col" id="chatContainer" style="display: none;">
+                <div class="chat-header">
+                    <div class="chat-title">
+                        <h2>Secure Room</h2>
+                        <span class="connection-indicator">
+                            <span class="status-dot connected" id="connectionStatus"></span>
+                            <span id="connectionText" class="text-sm">End-to-End Encrypted</span>
+                        </span>
+                    </div>
+                    <button id="showConnectionPanelBtn" class="btn btn-outline btn-sm">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="8.5" cy="7" r="4"></circle>
+                            <line x1="20" y1="8" x2="20" y2="14"></line>
+                            <line x1="23" y1="11" x2="17" y2="11"></line>
+                        </svg>
+                        <span class="hide-mobile">Invite More</span>
+                    </button>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <div class="system-message">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        Messages are P2P encrypted and never touch our servers.
+                    </div>
+                </div>
+
+                <div class="chat-input-area">
+                    <div class="input-wrapper">
+                        <textarea id="messageInput" placeholder="Message..." class="input-glass scrollbar-hide"
+                            rows="1"></textarea>
+                        <button id="sendMessageBtn" class="btn btn-primary btn-round" title="Send (Enter)">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- File Transfer Progress Toast -->
+        <div id="fileTransferProgress" class="glass-toast" style="display: none;">
+            <div class="toast-content">
+                <div class="toast-header">
+                    <div class="file-icon-small">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                            <polyline points="13 2 13 9 20 9"></polyline>
+                        </svg>
+                    </div>
+                    <span id="progressFileName" class="truncate"></span>
+                    <button id="cancelTransferBtn" class="btn-close"><svg width="14" height="14" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg></button>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="progressBar"></div>
+                </div>
+                <div class="progress-stats">
+                    <span id="progressPercent">0%</span>
+                    <span id="progressSize" class="text-muted"></span>
                 </div>
             </div>
-
-            <!-- Join Session -->
-            <div class="connection-section">
-                <h3>Join Session</h3>
-                <label class="form-label">Enter Room Code here:</label>
-                <input type="text" id="roomCodeInput" placeholder="e.g. 12345" class="form-control" style="font-size: 1.5rem; text-align: center; letter-spacing: 2px; margin-bottom: 10px;">
-                <button id="joinSessionBtn" class="btn btn--primary">Join Room</button>
-            </div>
-
-            <!-- Connection Status -->
-            <div class="connection-status">
-                <h4>Connected Peers: <span id="peerCount">0</span></h4>
-                <div id="peersList" class="peers-list"></div>
-            </div>
         </div>
 
-        <!-- File Drop Zone (Always Visible) -->
-        <div class="file-section">
-            <h3>File Sharing</h3>
-            <div class="file-drop-zone" id="fileDropZone">
-                <div class="file-drop-text">Drop files here or click to select</div>
-                <input type="file" id="fileInput" multiple hidden>
-            </div>
-        </div>
-
-        <!-- Chat Interface -->
-        <div class="chat-container" id="chatContainer" style="display: none;">
-            <div class="chat-header">
-                <h2>Chat Room</h2>
-                <div class="chat-controls">
-                    <span class="connection-indicator">
-                        <span class="status-dot connected" id="connectionStatus"></span>
-                        <span id="connectionText">Connected</span>
-                    </span>
-                    <button id="showConnectionPanelBtn" class="btn btn--outline btn--sm">Add More Peers</button>
-                </div>
-            </div>
-
-            <div class="chat-messages" id="chatMessages"></div>
-
-            <div class="chat-input-area">
-                <div class="message-input-container">
-                    <textarea id="messageInput" placeholder="Type your message..." class="form-control message-input" rows="1"></textarea>
-                    <button id="sendMessageBtn" class="btn btn--primary send-btn">Send</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- File Transfer Progress -->
-        <div id="fileTransferProgress" class="file-transfer-progress" style="display: none;">
-            <div class="progress-header">
-                <span id="progressFileName"></span>
-                <button id="cancelTransferBtn" class="btn btn--outline btn--sm">Cancel</button>
-            </div>
-            <div class="progress-bar-container">
-                <div class="progress-bar" id="progressBar"></div>
-            </div>
-            <div class="progress-text">
-                <span id="progressPercent">0%</span>
-                <span id="progressSize"></span>
-            </div>
-        </div>
-
-        <!-- Status Messages -->
-        <div id="statusMessages" class="status-messages"></div>
+        <!-- Notification Toasts container -->
+        <div id="statusMessages" class="toast-container"></div>
     </div>
 
     <script src="app.js"></script>
 </body>
+
 </html>
